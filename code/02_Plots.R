@@ -1,12 +1,29 @@
 library(tidyverse)
 library(gridExtra)
 library(scales)
+library(cowplot)
 
 load("metadata_clean.RData")
 data <- data_clean %>% 
-  filter(continent %in% c("Antarctica", "Europe", "Africa",
-                          "South America", "Asia", "North America") &
+  filter(continent %in% c( "Antarctica","Europe", "Africa",
+                          "South America", "Asia", "North America", "Oceania") &
            !kingdom == "Protozoa")
+
+
+
+# Some figures
+# count of unique countries 
+data %>%
+  select(country) %>%
+  filter(!is.na(country)) %>%
+  distinct()%>%
+  count()
+
+data %>%
+  select(group) %>%
+  filter(!is.na(group)) %>%
+  distinct()%>%
+  count()
 
 
 # Sources plots -----------------------------------------------------------
@@ -47,23 +64,26 @@ continent_age_counts <- unique_sources %>%
 p2 <- ggplot(continent_age_counts, aes(x = reorder(continent, -count), y = count, fill = age_category)) +
   geom_bar(stat = "identity", position = "stack") +
   labs(
-    title = "Number of Unique Sources by Continent and Age",
-    x = "Continent",
+    title = "A",
+    x = "",
     y = "Number of Unique Sources",
     fill = "Source Age"
   ) +
- # scale_y_log10(labels=label_number()) +
   theme_minimal() +
+  scale_y_continuous(breaks = seq(0, 1500, by = 250), expand=c(0.01,0)) +
   coord_flip() +
   scale_fill_manual(values = c(
     "Less than 5 years old" = "#4CAF50",  
     "5-20 years old" = "#2196F3",         
     "Older than 20 years" = "#FFC107"     
   )) +
-  theme(
-    legend.position = "bottom",
-    legend.title = element_text(size = 10),
-    legend.text = element_text(size = 9)
+  theme(text=element_text(size=20),
+        legend.position = c(0.95, 0.95), 
+        legend.justification = c(1, 1),  
+        legend.background = element_rect(colour = 'black', fill = 'white', linetype='solid'),  
+        legend.box.background = element_blank(),
+        axis.text.y= element_text(color="black"),
+        axis.text.x= element_text(color="black")
   )
 
 p2
@@ -80,23 +100,64 @@ continent_kingdom_counts <- data %>%
   mutate(count_log = log(count)) %>% 
   arrange(count)
 
-p3 <- ggplot(continent_kingdom_counts %>% 
+p3 <- ggplot(continent_kingdom_counts %>%
                arrange(count), 
              aes(x = reorder(continent, -count), y = count, fill = kingdom)) +
   geom_bar(stat = "identity", position = "stack") +
-  scale_y_continuous(transform = "log10", labels=transform("log10")) +
+  scale_y_continuous(breaks = seq(0, 3500, by = 250), expand=c(0.01,0)) +
   labs(
-    title = "Number of Records by Continent and Kingdom",
-    x = "Continent",
+    title = "B",
+    x = "",
     y = "Number of Records",
     fill = "Kingdom"
   ) +
-  theme_minimal() +
+  theme_minimal() + 
   coord_flip() +
-  scale_fill_brewer(palette = "Set1")
+  scale_fill_brewer(palette = "Set1") +
+  theme(text=element_text(size=20),
+    legend.position = c(0.95, 0.95), 
+    legend.justification = c(1, 1),  
+    legend.background = element_rect(colour = 'black', fill = 'white', linetype='solid'),  
+    legend.box.background = element_blank(),
+    axis.text.y= element_text(color="black"),
+    axis.text.x= element_text(color="black")
+    )
 
 
 p3
 
+# Count records by year
+year_counts<-un_sources_years%>%
+  group_by(year) %>%
+  summarize(count = n()) 
 
-grid.arrange(p3, p2)
+year_counts$year <- as.Date(paste0(year_counts$year, "-01-01"))
+
+# p4 histogram of year counts
+p4 <- ggplot(year_counts, aes(x = year, y = count)) +
+  geom_bar(stat = "identity", fill = "#4CAF50") +
+  labs(
+    title = "C",
+    x = "Year",
+    y = "Number of Records"
+  ) +
+  theme_minimal() +
+  scale_x_date(date_labels = "%Y", date_breaks = "10 year") +
+  theme(text=element_text(size=20),
+        axis.text.y= element_text(color="black", size=15),
+        axis.text.x= element_text(color="black")
+  )
+
+p4
+
+
+
+pp <- list(p2, p3, p4)
+plot_grid(plotlist=pp, ncol=1, align='v')
+
+p1
+
+
+
+
+

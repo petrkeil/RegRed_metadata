@@ -39,7 +39,7 @@ world_data <- world %>%
   )
 
 # Create map
-ggplot() +
+p1<-ggplot() +
   geom_sf(data = world_data, aes(fill = source_category), color = "darkgray", size = 0.2, alpha = 0.8) +
   geom_sf(data = ocean, fill = "lightblue", color = NA, alpha = 0.3) +
   scale_fill_manual(

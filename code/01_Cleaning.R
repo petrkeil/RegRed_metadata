@@ -37,7 +37,7 @@ data_clean <- data %>%
       "North_america" = "North America",
       "South_america" = "South America")
   ) %>%
-  select(-c(url_clean, name_orig, Year, hash))%>%#moved duplicated columns
+  select(-c(url_clean, name_orig, Year, hash))%>% # moved duplicated columns
   relocate((file_hash), .after = last_col()) # moved hash to the end 
 
 
