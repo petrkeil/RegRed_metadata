@@ -1,5 +1,6 @@
 library(tidyverse)
 library(gridExtra)
+library(scales)
 
 load("metadata_clean.RData")
 data <- data_clean %>% 
@@ -12,8 +13,11 @@ data <- data_clean %>%
 
 
 ## Number of unique sources by continent and age
-un_sources_years <- data[,c("continent", "source_name", "Year")]  %>%
-  distinct(continent, source_name, Year, .keep_all = TRUE)
+un_sources_years <- data[,c("continent", "source_name", "year")]  %>%
+  distinct(continent, source_name, year, .keep_all = TRUE)
+
+un_hashes_years <- data[,c("continent", "file_hash","source_name" ,"year")]  %>%
+  distinct(continent, file_hash, year,source_name, .keep_all = TRUE)
 
 # Get current year
 current_year <- year(Sys.Date())
@@ -21,8 +25,8 @@ current_year <- year(Sys.Date())
 # Create age categories
 unique_sources <- un_sources_years %>%
   mutate(age_category = case_when(
-    Year >= (current_year - 5) ~ "Less than 5 years old",
-    Year >= (current_year - 20) ~ "5-20 years old",
+    year >= (current_year - 5) ~ "Less than 5 years old",
+    year >= (current_year - 20) ~ "5-20 years old",
     TRUE ~ "Older than 20 years"
   ))
 
@@ -48,7 +52,7 @@ p2 <- ggplot(continent_age_counts, aes(x = reorder(continent, -count), y = count
     y = "Number of Unique Sources",
     fill = "Source Age"
   ) +
-  scale_y_log10() +
+ # scale_y_log10(labels=label_number()) +
   theme_minimal() +
   coord_flip() +
   scale_fill_manual(values = c(
@@ -63,6 +67,7 @@ p2 <- ggplot(continent_age_counts, aes(x = reorder(continent, -count), y = count
   )
 
 p2
+
 
 # Records plots -----------------------------------------------------------
 
@@ -79,7 +84,7 @@ p3 <- ggplot(continent_kingdom_counts %>%
                arrange(count), 
              aes(x = reorder(continent, -count), y = count, fill = kingdom)) +
   geom_bar(stat = "identity", position = "stack") +
-  scale_y_log10() +
+  scale_y_continuous(transform = "log10", labels=transform("log10")) +
   labs(
     title = "Number of Records by Continent and Kingdom",
     x = "Continent",
