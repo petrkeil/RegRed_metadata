@@ -2,6 +2,9 @@ library(tidyverse)
 library(gridExtra)
 library(scales)
 library(cowplot)
+library(rstudioapi)
+
+setwd(dirname(getActiveDocumentContext()$path)) #
 
 load("metadata_clean.RData")
 data <- data_clean %>% 
@@ -64,9 +67,9 @@ continent_age_counts <- unique_sources %>%
 p2 <- ggplot(continent_age_counts, aes(x = reorder(continent, -count), y = count, fill = age_category)) +
   geom_bar(stat = "identity", position = "stack") +
   labs(
-    title = "A",
+    title = "",
     x = "",
-    y = "Number of Unique Sources",
+    y = "Number of Sources",
     fill = "Source Age"
   ) +
   theme_minimal() +
@@ -106,7 +109,7 @@ p3 <- ggplot(continent_kingdom_counts %>%
   geom_bar(stat = "identity", position = "stack") +
   scale_y_continuous(breaks = seq(0, 3500, by = 250), expand=c(0.01,0)) +
   labs(
-    title = "B",
+    title = "",
     x = "",
     y = "Number of Records",
     fill = "Kingdom"
@@ -137,9 +140,9 @@ year_counts$year <- as.Date(paste0(year_counts$year, "-01-01"))
 p4 <- ggplot(year_counts, aes(x = year, y = count)) +
   geom_bar(stat = "identity", fill = "#4CAF50") +
   labs(
-    title = "C",
+    title = "",
     x = "Year",
-    y = "Number of Records"
+    y = "Number of Sources"
   ) +
   theme_minimal() +
   scale_x_date(date_labels = "%Y", date_breaks = "10 year") +
@@ -152,8 +155,9 @@ p4
 
 
 
-pp <- list(p2, p3, p4)
-plot_grid(plotlist=pp, ncol=1, align='v')
+pp <- list(p4,p2, p3)
+plot_grid(plotlist=pp, ncol=1, align='v', axis = 'l', rel_heights = c(1, 1, 1), labels = c("A", "B", "C")) +
+  theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"))
 
 p1
 
