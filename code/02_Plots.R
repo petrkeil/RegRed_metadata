@@ -28,8 +28,21 @@ data %>%
   distinct()%>%
   count()
 
+data_clean%>%
+  select(GADM_level_1)%>%
+  filter(!is.na(GADM_level_1)) %>%
+  distinct()%>%
+  count()
 
-# Sources plots -----------------------------------------------------------
+# count of unique sources per continent
+data %>%
+  group_by(continent) %>%
+  filter(!is.na(source_name)) %>%
+  distinct(source_name)%>%
+  count()
+
+
+Asia# Sources plots -----------------------------------------------------------
 
 
 ## Number of unique sources by continent and age
