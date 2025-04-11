@@ -41,8 +41,14 @@ data %>%
   distinct(source_name)%>%
   count()
 
+data%>%
+  group_by(country)%>%
+  distinct(source_name)%>%
+  count()%>%
+  ungroup()%>%
+  summarise(mean=mean(n))
 
-Asia# Sources plots -----------------------------------------------------------
+# Sources plots -----------------------------------------------------------
 
 
 ## Number of unique sources by continent and age
@@ -130,7 +136,7 @@ p3 <- ggplot(continent_kingdom_counts %>%
   theme_minimal() + 
   coord_flip() +
   scale_fill_brewer(palette = "Set1") +
-  theme(text=element_text(size=20),
+  theme(text=element_text(size=30),
     legend.position = c(0.95, 0.95), 
     legend.justification = c(1, 1),  
     legend.background = element_rect(colour = 'black', fill = 'white', linetype='solid'),  
@@ -159,22 +165,22 @@ p4 <- ggplot(year_counts, aes(x = year, y = count)) +
   ) +
   theme_minimal() +
   scale_x_date(date_labels = "%Y", date_breaks = "10 year") +
-  theme(text=element_text(size=20),
+  theme(text=element_text(size=30),
         axis.text.y= element_text(color="black", size=15),
         axis.text.x= element_text(color="black")
   )
 
 p4
+p3
 
 
-
-pp <- list(p4,p2, p3)
+pp <- list(p4,p3)
 plot_grid(plotlist=pp, ncol=1, align='v', axis = 'l', rel_heights = c(1, 1, 1), labels = c("A", "B", "C")) +
   theme(plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"))
 
 p1
 
-
+p4
 
 
 
