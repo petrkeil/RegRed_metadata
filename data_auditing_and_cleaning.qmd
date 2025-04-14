@@ -69,8 +69,8 @@ raw_metadata <- raw_metadata %>%
 The fields are: `name_orig`, `format`, and `language`.
 
 
-  - [ ] Make sure there are no '\r', '\n', other weird characters or typos. 
-  - [ ] Capitalise and clean `language`.  
+  - Make sure there are no `\r`, `\n`, other weird characters or typos. 
+  - Capitalise and clean `language`.  
 
 ```{r}
 #| label: check-source-fields
@@ -108,12 +108,12 @@ raw_metadata %>%
 
 #### DOUBTS
 
-  - There's one source that has a URL instead of a name, that includes 12 records. 
+  - [ ] There's one source that has a URL instead of a name, that includes 12 records. 
   
   The `name_orig` is: `https://www.odonat-grandest.fr/listes-rouges-grand-est-etat-avancement/`.  
   The `id` values are: `[1] 446 447 448 449 450 451 452 453 454 455 456 457`.   
 
-  - There are some `formats` with `?` as value. What should they be?
+  - [ ] There are some `formats` with `?` as value. What should they be?
 
 #### FIX
 
@@ -150,11 +150,11 @@ raw_metadata %>%
 
 The fields are: `continent`, `country`, `state_province`, `gadm_level_1`, `gadm_level_2`, `region_custom`, `region_detail`, and `iso_2`.
 
-  - [ ] Make sure there are no typos, thus duplicates.   
-  - [ ] Capitalise `continent`, `country`, `state_province` names.  
-  - [ ] Check ISO codes.  
-  - [ ] Check GADM levels.  
-  - [ ] Clean `region_custom` and `region_detail`.  
+  - Make sure there are no typos, thus duplicates.   
+  - Capitalise `continent`, `country`, `state_province` names.  
+  - Check ISO codes.  
+  - Check GADM levels.  
+  - Clean `region_custom` and `region_detail`.  
   
 ```{r}
 #| label: check-location-fields
@@ -233,26 +233,18 @@ raw_metadata %>%
 
 #### DOUBTS
 
-  - What to do with `country == USSR`? Should be custom region and not country.  
-  - Kosovo is `iso_2 = XK`? Yes, it's a temporary, unofficial country code top-level domain for Kosovo.    
-  - Is `Antartica` and `French Souther Territories` correct? Yes.    
-  
-  - Lots of `state_province` and `GADM_level_1` to correct. Is GADM_1 in English?
-  
-    'Südtirols' = 'Bolzano' (state_name in German?)
-    'Centre-Val De Loire' = 'Centre' (something missing?)
-    'Corsica' = 'Corse'  (something missing?)
-    'Flanders' = 'Vlaanderen' (English?)
-    'Opole Voivodeship' = 'Opole'  (something missing?)
+  - [ ] What to do with `country == USSR`? Should be custom region and not country.  
+  - [x] Kosovo is `iso_2 = XK`? Yes, it's a temporary, unofficial country code top-level domain for Kosovo.    
+  - [x] Is `Antartica` and `French Souther Territories` correct? Yes.    
+  - [ ] Lots of `state_province` and `GADM_level_1` to correct. Is GADM_1 in English? e.g., 'Südtirols' = 'Bolzano' (state_name in German?), 'Centre-Val De Loire' = 'Centre' (something missing?), 'Corsica' = 'Corse'  (something missing?), 'Flanders' = 'Vlaanderen' (English?), 'Opole Voivodeship' = 'Opole'  (something missing?).  
     
 
 ### Check `Taxon` fields
 
 The fields are: `kingdom`, `phylum`, `subphylum`, `class`, `order`, and `group`.
 
-  - [ ] Check duplicates in all fields.
-  - [ ] Rename `group` to `taxa`.
-
+  - Check duplicates in all fields.
+  - Rename `group` to `taxa`.
 
 I searched names using the GBIF backbone, using my own custom function `nameMatcherGBIF()`.  
  
@@ -395,36 +387,36 @@ left_join(raw_metadata %>% mutate(group = str_trim(group)) %>%
   kableExtra::kable_styling(latex_options = c('striped', 'hold_position'))
 ```
 
-  - The value `Tracheophyta` is for vascular plants. Some groups with value `Flora` have this but some others don't. Is it correct?
-  - There are some groups with value `Fauna` that have  `Chordata` and `Vertebrata` as `phylum` and `subphylum`, but some others don't. Is it correct?
-  - The group `Onychophora` should be phylum `Onychophora`.  
-  - There's a typo on group `Opilioness`, should be `Opiliones`.  
-  - Correct the value to order `Pseudoscorpiones` for the group `False Scorpions`.  
-  - The group `Entomostraca` should not have `Copepoda` as class.
-  - Crabs should have class `Malacostraca`.  
-  - Sharks should not have `Chondrichthyes` as class.  
-  - Groups `Cetartiodactyla` and `Marine Cetartiodactyla` should be order `Artiodactyla`.  
-  - Carnivores should be order `Carnivora`.
-  - Group `Lizards` should be order `Squamata`.  
-  - Group `Lampreys` should be class `Petromyzonti` and order `Petromyzontiformes`.
-  - There's a typo on group `Musslels`, should be `Mussels`.  
-  - There's a typo on the phylum `chordata`, should be uppercase.
-  - The groups `Orchids` and `Bromeliads`, are missing phylum, class and family. They should be `Tracheophyta` and `Liliopsida`. Also family `Orchidaceae` and  `Bromeliaceae`.    
-  - The group `Wild Cinnamon`, is missing phylum, class and order. They shoud be `Tracheophyta` `Magnoliopsida` `Canellales` `Canellaceae`, and the class should have family `Canellaceae`.
-  - The groups `Vascular plants`, `Trees`, `Shrubs`, `Cloud Forest Trees`, `Endemic Trees`, `Perennial Shrubs`, `Arctic Vascular Plants`, `Spermatophytes` and `Angiosperms`, should have `Tracheophyta` as phylum.  
-  - The group `Flowering Plant` should have 
-  - The group `Ferns` should have `Tracheophyta` and `Polypodiopsida`, as phylum and class.
-  - The group `Conifers`, should have class `Pinopsida`.      
-  - The group `Palms`, should have `Tracheophyta`, `Liliopsida`, `Arecales`, and `Arecaceae`, as phylum, class, order and family.
-  - The group `Monocotyledons` should have `Tracheophyta` and `Liliopsida`, as phylum and class.  
-  - There's a typo in `Endemic and Range-Restricted Vascular Plantss`. This should have `Tracheophyta` as phylum.  
+  - [ ] The value `Tracheophyta` is for vascular plants. Some groups with value `Flora` have this but some others don't. Is it correct?
+  - [ ] There are some groups with value `Fauna` that have  `Chordata` and `Vertebrata` as `phylum` and `subphylum`, but some others don't. Is it correct?
+  - [ ] The group `Onychophora` should be phylum `Onychophora`.  
+  - [ ] There's a typo on group `Opilioness`, should be `Opiliones`.  
+  - [ ] Correct the value to order `Pseudoscorpiones` for the group `False Scorpions`.  
+  - [ ] The group `Entomostraca` should not have `Copepoda` as class.
+  - [ ] Crabs should have class `Malacostraca`.  
+  - [ ] Sharks should not have `Chondrichthyes` as class.  
+  - [ ] Groups `Cetartiodactyla` and `Marine Cetartiodactyla` should be order `Artiodactyla`.  
+  - [ ] Carnivores should be order `Carnivora`.
+  - [ ] Group `Lizards` should be order `Squamata`.  
+  - [ ] Group `Lampreys` should be class `Petromyzonti` and order `Petromyzontiformes`.
+  - [ ] There's a typo on group `Musslels`, should be `Mussels`.  
+  - [ ] There's a typo on the phylum `chordata`, should be uppercase.
+  - [ ] The groups `Orchids` and `Bromeliads`, are missing phylum, class and family. They should be `Tracheophyta` and `Liliopsida`. Also family `Orchidaceae` and  `Bromeliaceae`.   
+  - [ ] The group `Wild Cinnamon`, is missing phylum, class and order. They shoud be `Tracheophyta` `Magnoliopsida` `Canellales` `Canellaceae`, and the class should have family `Canellaceae`.
+  - [ ] The groups `Vascular plants`, `Trees`, `Shrubs`, `Cloud Forest Trees`, `Endemic Trees`, `Perennial Shrubs`, `Arctic Vascular Plants`, `Spermatophytes` and `Angiosperms`, should have `Tracheophyta` as phylum.  
+  - [ ] The group `Flowering Plant` should have 
+  - [ ] The group `Ferns` should have `Tracheophyta` and `Polypodiopsida`, as phylum and class.
+  - [ ] The group `Conifers`, should have class `Pinopsida`.      
+  - [ ] The group `Palms`, should have `Tracheophyta`, `Liliopsida`, `Arecales`, and `Arecaceae`, as phylum, class, order and family.
+  - [ ] The group `Monocotyledons` should have `Tracheophyta` and `Liliopsida`, as phylum and class.  
+  - [ ] There's a typo in `Endemic and Range-Restricted Vascular Plantss`. This should have `Tracheophyta` as phylum.  
   
 
 ### Check `Event` fields
 
 The fields is: `year`
 
-  - [ ] Check it has numeric values.
+  - Check it has numeric values.
   
 ```{r}
 #| label: check-event-fields
@@ -488,7 +480,7 @@ raw_metadata %>%
 
 #### DOUBTS
 
-  - There are 16 records with year = `2024?`. Is it correct to change them for `2024`? 
+  - [ ] There are 16 records with year = `2024?`. Is it correct to change them for `2024`? 
   They belong to the sources:
 
 ```
@@ -497,7 +489,7 @@ A Red List of Benin’s sharks
 The Red List of Mammals of South Africa, Swaziland and Lesotho 2024  
 ```
 
-  - There are 9 records without year. What should we do with them? 
+  - [ ] There are 9 records without year. What should we do with them? 
   They belong to the following source:
   
 ```
@@ -535,7 +527,7 @@ raw_metadata %>%
 
 #### DOUBTS
 
-  - There's one URL that resolves but has 'http' missing and one URL that is incorrect. Should this be `NA`?
+  - [ ] There's one URL that resolves but has 'http' missing and one URL that is incorrect. Should this be `NA`?
   
 ```
 ima.sc.gov.br/index.php/biodiversidade/biodiversidade/fauna
@@ -753,7 +745,7 @@ metadata %>%
     filter(!is.na(class)) %>% 
     filter(kingdom %in% c('Animalia')) %>% 
     group_by(kingdom, class) %>% 
-    summarise(n_sources_taxa = n()) %>% 
+    summarise(n_sources_taxa = n_distinct(source_name)) %>% 
     arrange(desc(n_sources_taxa)) %>% 
     slice_head(n=5) %>% 
   rename(`Number of sources` = n_sources_taxa) %>% 
@@ -764,7 +756,7 @@ metadata %>%
     filter(!is.na(order)) %>% 
     filter(kingdom %in% c('Plantae')) %>% 
     group_by(kingdom, order) %>% 
-    summarise(n_sources_taxa = n()) %>% 
+    summarise(n_sources_taxa = n_distinct(source_name)) %>% 
     arrange(desc(n_sources_taxa)) %>% 
     slice_head(n=5) %>% 
   rename(`Number of sources` = n_sources_taxa) %>% 
@@ -784,7 +776,7 @@ metadata %>%
   filter(!is.na(phylum)) %>% 
   filter(kingdom %in% c('Animalia')) %>% 
   group_by(kingdom, phylum) %>% 
-  summarise(n_sources_taxa = n()) %>% 
+  summarise(n_sources_taxa = n_distinct(source_name)) %>% 
   ggplot(aes(x = reorder(phylum, -n_sources_taxa), y = n_sources_taxa)) +
   geom_bar(stat = "identity", fill = "#4CAF50") +
   facet_wrap(~kingdom, scales = 'free') +
@@ -796,7 +788,7 @@ metadata %>%
   filter(!is.na(phylum)) %>% 
   filter(kingdom %in% c('Plantae', 'Fungi')) %>% 
   group_by(kingdom, phylum) %>% 
-  summarise(n_sources_taxa = n()) %>% 
+  summarise(n_sources_taxa = n_distinct(source_name)) %>% 
   ggplot(aes(x = reorder(phylum, -n_sources_taxa), y = n_sources_taxa)) +
   geom_bar(stat = "identity", fill = "#4CAF50") +
   facet_wrap(~kingdom, scales = 'free') +
@@ -808,7 +800,7 @@ metadata %>%
   filter(!is.na(order)) %>% 
   filter(kingdom %in% c('Animalia')) %>% 
   group_by(kingdom, order) %>% 
-  summarise(n_sources_taxa = n()) %>% 
+  summarise(n_sources_taxa = n_distinct(source_name)) %>% 
   ggplot(aes(x = reorder(order, -n_sources_taxa), y = n_sources_taxa)) +
   geom_bar(stat = "identity", fill = "#4CAF50") +
   facet_wrap(~kingdom, scales = 'free') +
@@ -820,7 +812,7 @@ metadata %>%
   filter(!is.na(order)) %>% 
   filter(kingdom %in% c('Plantae', 'Fungi')) %>% 
   group_by(kingdom, order) %>% 
-  summarise(n_sources_taxa = n()) %>% 
+  summarise(n_sources_taxa = n_distinct(source_name)) %>% 
   ggplot(aes(x = reorder(order, -n_sources_taxa), y = n_sources_taxa)) +
   geom_bar(stat = "identity", fill = "#4CAF50") +
   facet_wrap(~kingdom, scales = 'free') +
