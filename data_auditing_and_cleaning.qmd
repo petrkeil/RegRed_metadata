@@ -1,0 +1,851 @@
+---
+title: "Data cleaning and auditing"
+format: 
+  html:
+    toc: true
+    toc-location: right
+    smooth-scroll: true
+    html-math-method: katex
+    code-fold: false
+self-contained: true
+editor: source
+author: 'Florencia Grattarola'
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| label: libraries
+#| echo: true
+#| eval: true
+#| message: false
+#| warning: false
+
+library(httr)
+library(jsonlite)
+library(countrycode)
+library(janitor)
+library(readxl)
+library(sf)
+sf_use_s2(FALSE)
+library(tmap)
+tmap_mode('view')
+library(tidyverse)
+options(knitr.kable.NA = '')
+```
+
+## Data cleaning
+
+### Read data
+
+```{r}
+#| label: read-data
+#| echo: true
+#| eval: true
+#| message: false
+#| warning: false
+
+raw_metadata <- read_xlsx('data/metada_work_version.xlsx', guess_max = 4000) 
+```
+
+### Check columns
+
+```{r}
+#| label: check-col-names
+#| echo: true
+#| eval: false
+#| message: false
+#| warning: false
+
+raw_metadata <- raw_metadata %>% 
+  janitor::clean_names() %>% 
+  janitor::remove_empty(c('rows', 'cols')) 
+
+```
+
+### Check `source` fields
+
+The fields are: `name_orig`, `format`, and `language`.
+
+
+  - [ ] Make sure there are no '\r', '\n', other weird characters or typos. 
+  - [ ] Capitalise and clean `language`.  
+
+```{r}
+#| label: check-source-fields
+#| echo: true
+#| eval: false
+#| message: false
+#| warning: false
+
+# name
+raw_metadata %>% 
+  filter(grepl('http', name_orig)) %>% 
+  group_by(name_orig) %>% count
+
+raw_metadata %>% 
+  mutate(name_orig = str_squish(name_orig)) %>% 
+  mutate(name_orig = str_remove_all(name_orig, "\\\\")) %>% 
+  mutate(name_orig = str_remove_all(name_orig, "\"")) %>% 
+  group_by(name_orig) %>% 
+  summarise(n_countries = n_distinct(country)) %>% 
+  select(name_orig, n_countries) %>% 
+  print(n=10)
+
+# format
+raw_metadata %>% 
+  mutate(format = ifelse(format == 'NA', NA, str_squish(format))) %>% 
+  distinct(format)
+
+# language
+raw_metadata %>% 
+  mutate(language = ifelse(language == 'NA', NA, str_squish(language))) %>% 
+  mutate(language = str_replace(language, "/|\\|", ' | ')) %>% 
+  distinct(language) %>% 
+  print(n=50)
+```
+
+#### DOUBTS
+
+  - There's one source that has a URL instead of a name, that includes 12 records. 
+  
+  The `name_orig` is: `https://www.odonat-grandest.fr/listes-rouges-grand-est-etat-avancement/`.  
+  The `id` values are: `[1] 446 447 448 449 450 451 452 453 454 455 456 457`.   
+
+  - There are some `formats` with `?` as value. What should they be?
+
+#### FIX
+
+```{r}
+#| label: check-col-names-fix
+#| echo: true
+#| eval: false
+#| message: false
+#| warning: false
+
+# French: Liste rouge des Amphibiens du Grand Est
+# English: Red list of Mammals of Grand Est    
+
+raw_metadata %>% 
+  mutate(name_orig = ifelse(grepl('htt', name_orig) & 
+                               state_province == 'Grand Est',
+                             str_glue('Red list of {group} of Grand Est'), name_orig)) %>% 
+  filter(state_province == 'Grand Est') %>% select(group, name_orig)
+
+raw_metadata %>% 
+  mutate(language = ifelse(language == 'NA', NA, str_squish(language))) %>% 
+  mutate(language = str_replace(language, "/|\\|", ' | ')) 
+
+raw_metadata %>% 
+  mutate(format = ifelse(format == '?', NA, format)) 
+
+raw_metadata %>% 
+  mutate(name_orig = str_squish(name_orig)) %>% 
+  mutate(name_orig = str_remove_all(name_orig, "\\\\")) %>% 
+  mutate(name_orig = str_remove_all(name_orig, "\"")) 
+```
+
+### Check `Location` fields
+
+The fields are: `continent`, `country`, `state_province`, `gadm_level_1`, `gadm_level_2`, `region_custom`, `region_detail`, and `iso_2`.
+
+  - [ ] Make sure there are no typos, thus duplicates.   
+  - [ ] Capitalise `continent`, `country`, `state_province` names.  
+  - [ ] Check ISO codes.  
+  - [ ] Check GADM levels.  
+  - [ ] Clean `region_custom` and `region_detail`.  
+  
+```{r}
+#| label: check-location-fields
+#| echo: true
+#| eval: false
+#| message: false
+#| warning: false
+
+# check continent
+raw_metadata %>% 
+  mutate(continent = str_squish(str_replace_all(str_squish(continent), '\\|', ' | '))) %>%
+  mutate(continent = str_replace_all(continent, '_', ' ')) %>%
+  mutate(continent = str_to_title(continent)) %>% 
+  distinct(continent)
+
+# check country
+raw_metadata %>% 
+  mutate(country = ifelse(country == 'NA', NA, str_squish(country))) %>% 
+  mutate(country = str_replace_all(country, '_', ' ')) %>%
+  mutate(country = ifelse(country == 'USSR', country, str_to_title(country))) %>%
+  mutate(country = str_replace_all(country, 'And ', 'and ')) %>% 
+  mutate(country = str_replace_all(country, 'Of', 'of')) %>% 
+  mutate(country = str_replace_all(country, 'The', 'the')) %>% 
+  distinct(country)
+
+# check state_province
+raw_metadata %>% 
+  mutate(state_province = ifelse(state_province == 'NA', NA, str_squish(state_province))) %>%
+  mutate(state_province = str_to_title(state_province)) %>% 
+  mutate(state_province = str_replace_all(state_province, 'And ', 'and ')) %>% 
+  mutate(state_province = str_replace_all(state_province, 'Of', 'of')) %>% 
+  mutate(state_province = str_replace_all(state_province, 'The', 'the')) %>% 
+  filter(!is.na(state_province)) %>% 
+  filter(state_province != gadm_level_1) %>% 
+  distinct(country, state_province, gadm_level_1, iso_2, iso_3) %>% 
+  print(n=100)
+
+# check gadm_level_1 and gadm_level_2
+raw_metadata %>% 
+  mutate(gadm_level_1 = ifelse(gadm_level_1 == 'NA', NA, str_squish(gadm_level_1))) %>%
+  mutate(gadm_level_1 = str_to_title(gadm_level_1)) %>% 
+  mutate(gadm_level_1 = str_replace_all(gadm_level_1, 'And ', 'and ')) %>% 
+  mutate(gadm_level_1 = str_replace_all(gadm_level_1, 'Of', 'of')) %>% 
+  mutate(gadm_level_1 = str_replace_all(gadm_level_1, 'The', 'the')) %>% 
+  filter(!is.na(gadm_level_1)) %>% distinct(gadm_level_1) %>% 
+  arrange(gadm_level_1) %>% print(n=100)
+
+raw_metadata %>% 
+  mutate(gadm_level_2 = ifelse(gadm_level_2 == 'NA', NA, str_squish(gadm_level_2))) %>%
+  mutate(gadm_level_2 = str_to_title(gadm_level_2)) %>% 
+  filter(!is.na(gadm_level_2)) %>% select(gadm_level_2)
+
+# check region_custom and region_detal
+raw_metadata %>% 
+  mutate(region_custom = ifelse(region_custom == 'NA', NA, str_squish(region_custom))) %>% 
+  mutate(region_detail = ifelse(region_detail == 'NA', NA, str_squish(region_detail))) %>% 
+  mutate(region_detail = str_squish(str_replace_all(str_squish(region_detail), '\\|', ' | '))) %>%
+  filter(!is.na(region_custom)) %>%
+  distinct(region_custom, region_detail, iso_2, iso_3) %>% 
+  print(n=100)
+
+# check iso_2 and iso_3
+raw_metadata %>% 
+  janitor::clean_names() %>% 
+  janitor::remove_empty(c('rows', 'cols')) %>% 
+  mutate(iso_2 = ifelse(iso_2 == 'NA' & country != 'Namibia', NA, str_squish(iso_2))) %>% 
+  mutate(iso_2 = str_squish(str_replace_all(str_squish(iso_2), '\\|', ' | '))) %>%
+  mutate(iso_3 = ifelse(iso_3 == 'NA', NA, str_squish(iso_3))) %>% 
+  mutate(iso_3 = str_squish(str_replace_all(str_squish(iso_3), '\\|', ' | '))) %>%
+  select(country, iso_2, iso_3, region_custom, region_detail) %>%  
+  filter(is.na(iso_2)) #%>% distinct()
+
+
+
+```
+
+#### DOUBTS
+
+  - What to do with `country == USSR`? Should be custom region and not country.  
+  - Kosovo is `iso_2 = XK`? Yes, it's a temporary, unofficial country code top-level domain for Kosovo.    
+  - Is `Antartica` and `French Souther Territories` correct? Yes.    
+  
+  - Lots of `state_province` and `GADM_level_1` to correct. Is GADM_1 in English?
+  
+    'Südtirols' = 'Bolzano' (state_name in German?)
+    'Centre-Val De Loire' = 'Centre' (something missing?)
+    'Corsica' = 'Corse'  (something missing?)
+    'Flanders' = 'Vlaanderen' (English?)
+    'Opole Voivodeship' = 'Opole'  (something missing?)
+    
+
+### Check `Taxon` fields
+
+The fields are: `kingdom`, `phylum`, `subphylum`, `class`, `order`, and `group`.
+
+  - [ ] Check duplicates in all fields.
+  - [ ] Rename `group` to `taxa`.
+
+
+I searched names using the GBIF backbone, using my own custom function `nameMatcherGBIF()`.  
+ 
+```{r}
+#| label: function-nameMatcherGBIF
+#| echo: true
+#| eval: true
+#| message: false
+#| warning: false
+
+# gbif name parser
+nameMatcherGBIF <- function(sp_name_list) {
+  
+  # api <- 'http://api.gbif.org/v1/parser/name'
+  api <- 'http://api.gbif.org/v1/species/match'
+  
+  name_parsed <- tibble(sp_name = character(),
+                        scientificName = character(),
+                        kingdom = character(),
+                        phylum = character(),
+                        class = character(),
+                        order = character(),
+                        family = character(),
+                        genus = character(),
+                        specificEpithet = character(),
+                        species = character(),
+                        status = character(), 
+                        rank = character())
+  
+  for(sp_name in sp_name_list){
+    # cat(sp_name, '\n')
+    call_url <- str_glue('{api}?name={sp_name}&strict=true&verbose=false')
+    get_json_call <- GET(url = URLencode(call_url)) %>%
+      content(as = "text") %>% fromJSON(flatten = TRUE)
+    
+    if(get_json_call$matchType == 'NONE') {
+      name_parsed_i <- tibble(sp_name = sp_name,
+                              scientificName = NA,
+                              kingdom = NA,
+                              phylum = NA,
+                              class = NA,
+                              order = NA,
+                              family = NA,
+                              genus = NA,
+                              specificEpithet = NA,
+                              species = NA,
+                              status = NA, 
+                              rank = NA)
+      name_parsed <- rbind(name_parsed, name_parsed_i)
+    } else{
+      name_parsed_i <- tibble(sp_name = sp_name,
+                              scientificName = ifelse(exists('scientificName',get_json_call), get_json_call$scientificName, NA),
+                              kingdom = ifelse(exists('kingdom',get_json_call), get_json_call$kingdom, NA),
+                              phylum = ifelse(exists('phylum',get_json_call), get_json_call$phylum, NA),
+                              class = ifelse(exists('class',get_json_call), get_json_call$class, NA),
+                              order = ifelse(exists('order',get_json_call), get_json_call$order, NA),
+                              family = ifelse(exists('family',get_json_call), get_json_call$family, NA),
+                              genus = ifelse(exists('genus',get_json_call), get_json_call$genus, NA),
+                              specificEpithet = ifelse(exists('specificEpithet',get_json_call), get_json_call$specificEpithet, NA),
+                              species = ifelse(exists('species',get_json_call), get_json_call$species, NA),
+                              status = ifelse(exists('status',get_json_call), get_json_call$status, NA), 
+                              rank = ifelse(exists('rank',get_json_call), get_json_call$rank, NA))
+      
+      name_parsed <- rbind(name_parsed, name_parsed_i)
+    }
+  }
+  return(name_parsed)
+}
+
+sp_list <- raw_metadata %>% 
+  distinct(kingdom, phylum, subphylum, class, order, group) %>% 
+  mutate(group = str_trim(group)) %>% 
+  mutate(group = str_to_title(group)) %>% 
+  mutate(group = str_replace_all(group, 'And ', 'and ')) %>% 
+  mutate(group = str_replace_all(group, 'Of', 'of')) %>% 
+  mutate(group = str_replace_all(group, 'The', 'the')) %>%
+  pull(group)
+
+sp_list_matched <- nameMatcherGBIF(sp_list) %>% suppressMessages()
+
+sp_list_matched <- sp_list_matched %>% 
+  mutate(scientificName = case_when(grepl('flora', sp_name, ignore.case=T) ~ 'Plantae',
+                                    grepl('fauna', sp_name, ignore.case=T) ~ 'Animalia',
+                                    grepl('tunicata', sp_name, ignore.case=T) ~ NA,
+                                    .default = scientificName)) %>% 
+  mutate(kingdom = case_when(grepl('flora', sp_name, ignore.case=T) ~ 'Plantae',
+                             grepl('fauna', sp_name, ignore.case=T) ~ 'Animalia',
+                             grepl('tunicata', sp_name, ignore.case=T) ~ NA,
+                             .default = kingdom)) %>% 
+  mutate(phylum = ifelse(phylum == 'chordata', 'Chordata', phylum))
+
+sp_list_unmatched <- sp_list_matched %>% 
+  filter(is.na(scientificName)) %>% pull(sp_name)
+
+sp_list_matched %>% filter(!is.na(kingdom)) %>% nrow() # matched
+length(sp_list_unmatched) # not matched
+```
+
+When the taxon name (i.e., `group`) was not found I kept the previous taxonomic fields' values.
+
+```{r}
+#| label: check-taxon-fields
+#| echo: true
+#| eval: true
+#| message: false
+#| warning: false
+
+merged_list <- left_join(raw_metadata %>%
+                           mutate(group = str_trim(group)) %>%
+                           distinct(group) %>%
+                           arrange(group),
+                         sp_list_matched %>%
+                           filter(!is.na(scientificName)) %>%
+                           rename(group=sp_name) %>% distinct()) %>%
+  arrange(group)
+
+raw_metadata_taxon_list <- raw_metadata %>%
+  mutate(group = str_trim(group)) %>% 
+  distinct(group, .keep_all = T) %>% 
+  select(kingdom, phylum, subphylum, class, order, group) %>% 
+  arrange(group)
+
+left_join(raw_metadata %>% mutate(group = str_trim(group)) %>%
+            select(-c(kingdom,phylum,subphylum,class,order)),
+          bind_rows(merged_list %>% 
+                      filter(!is.na(scientificName)),
+                    merged_list %>% 
+                      filter(is.na(scientificName)) %>%
+                      select(group) %>% 
+                      left_join(. , raw_metadata_taxon_list))) %>% 
+  mutate(group = str_trim(group)) %>% 
+  mutate(group = str_to_title(group)) %>% 
+  mutate(group = str_replace_all(group, 'And ', 'and ')) %>% 
+  mutate(group = str_replace_all(group, 'Of', 'of')) %>% 
+  mutate(group = str_replace_all(group, 'The', 'the')) %>%
+  mutate(group = str_replace_all(group, 'Et Al.', 'et al.')) %>%
+  distinct(group, kingdom, phylum, class, order, family, rank) %>% 
+  arrange(kingdom, phylum, class, order) %>% 
+  kableExtra::kbl(booktabs = T) %>% 
+  kableExtra::kable_styling(latex_options = c('striped', 'hold_position'))
+```
+
+  - The value `Tracheophyta` is for vascular plants. Some groups with value `Flora` have this but some others don't. Is it correct?
+  - There are some groups with value `Fauna` that have  `Chordata` and `Vertebrata` as `phylum` and `subphylum`, but some others don't. Is it correct?
+  - The group `Onychophora` should be phylum `Onychophora`.  
+  - There's a typo on group `Opilioness`, should be `Opiliones`.  
+  - Correct the value to order `Pseudoscorpiones` for the group `False Scorpions`.  
+  - The group `Entomostraca` should not have `Copepoda` as class.
+  - Crabs should have class `Malacostraca`.  
+  - Sharks should not have `Chondrichthyes` as class.  
+  - Groups `Cetartiodactyla` and `Marine Cetartiodactyla` should be order `Artiodactyla`.  
+  - Carnivores should be order `Carnivora`.
+  - Group `Lizards` should be order `Squamata`.  
+  - Group `Lampreys` should be class `Petromyzonti` and order `Petromyzontiformes`.
+  - There's a typo on group `Musslels`, should be `Mussels`.  
+  - There's a typo on the phylum `chordata`, should be uppercase.
+  - The groups `Orchids` and `Bromeliads`, are missing phylum, class and family. They should be `Tracheophyta` and `Liliopsida`. Also family `Orchidaceae` and  `Bromeliaceae`.    
+  - The group `Wild Cinnamon`, is missing phylum, class and order. They shoud be `Tracheophyta` `Magnoliopsida` `Canellales` `Canellaceae`, and the class should have family `Canellaceae`.
+  - The groups `Vascular plants`, `Trees`, `Shrubs`, `Cloud Forest Trees`, `Endemic Trees`, `Perennial Shrubs`, `Arctic Vascular Plants`, `Spermatophytes` and `Angiosperms`, should have `Tracheophyta` as phylum.  
+  - The group `Flowering Plant` should have 
+  - The group `Ferns` should have `Tracheophyta` and `Polypodiopsida`, as phylum and class.
+  - The group `Conifers`, should have class `Pinopsida`.      
+  - The group `Palms`, should have `Tracheophyta`, `Liliopsida`, `Arecales`, and `Arecaceae`, as phylum, class, order and family.
+  - The group `Monocotyledons` should have `Tracheophyta` and `Liliopsida`, as phylum and class.  
+  - There's a typo in `Endemic and Range-Restricted Vascular Plantss`. This should have `Tracheophyta` as phylum.  
+  
+
+### Check `Event` fields
+
+The fields is: `year`
+
+  - [ ] Check it has numeric values.
+  
+```{r}
+#| label: check-event-fields
+#| echo: true
+#| eval: false
+#| message: false
+#| warning: false
+
+raw_metadata %>% 
+  janitor::clean_names() %>% 
+  janitor::remove_empty(c('rows', 'cols')) %>% 
+  select(year, name_orig) %>% 
+  mutate(year = ifelse(year == 'NA', NA, year)) %>% 
+  mutate(year_new = as.numeric(year, na.rm=T)) %>% 
+  filter(is.na(year_new)) %>% 
+  distinct(name_orig, .keep_all = T) 
+
+raw_metadata %>% 
+  janitor::clean_names() %>% 
+  janitor::remove_empty(c('rows', 'cols')) %>% 
+  mutate(year = ifelse(year == 'NA', NA, year)) %>% 
+  mutate(year = ifelse(year == '2024?', 2024, year)) %>%
+  mutate(year = as.numeric(year, na.rm=T)) %>% 
+  mutate(year = case_when(is.na(year) & 
+                            name_orig == 'Crveni popis hrvatskih koralja' 
+                          ~ 2024,
+                          is.na(year) & 
+                            name_orig == 'A Red List of Benin’s sharks' 
+                          ~ 2024,
+                          is.na(year) & 
+                            name_orig == 'Crveni popis lišajeva Hrvatske' 
+                          ~ 2024,
+                          is.na(year) & 
+                            name_orig == 'Červené seznamy' 
+                          ~ 2024,
+                          is.na(year) & 
+                            name_orig == 'Coleoptera (Beetle) – Invertebrate Ireland Online' 
+                          ~ 2024,
+                          is.na(year) & 
+                            name_orig == 'Tricoptera (Caddisfly) – InvertebrateIreland Online' 
+                          ~ 2024,
+                          is.na(year) & 
+                            name_orig == 'Les mammifères de la Côte d’Ivoire' 
+                          ~ 2024,
+                          is.na(year) & 
+                            name_orig == 'Rongeurs et insectivores de Côte d’Ivoire, leur habitat et leur statut de conservation' 
+                          ~ 2024,
+                          is.na(year) & 
+                            name_orig == 'Красная книга Азербайджанской Республики' 
+                          ~ 2024,
+                          is.na(year) & 
+                            name_orig == 'Красная книга Узбекистана' 
+                          ~ 2024,
+                          .default = year)) %>% 
+  # filter(is.na(year)) %>% 
+  select(year, name_orig) %>% 
+  distinct(name_orig, .keep_all = T) 
+
+```
+
+
+#### DOUBTS
+
+  - There are 16 records with year = `2024?`. Is it correct to change them for `2024`? 
+  They belong to the sources:
+
+```
+https://www.odonat-grandest.fr/listes-rouges-grand-est-etat-avancement/
+A Red List of Benin’s sharks                                           
+The Red List of Mammals of South Africa, Swaziland and Lesotho 2024  
+```
+
+  - There are 9 records without year. What should we do with them? 
+  They belong to the following source:
+  
+```
+1 Crveni popis hrvatskih koralja                                                        
+2 Crveni popis lišajeva Hrvatske                                                        
+3 Červené seznamy                                                                       
+4 Coleoptera (Beetle) – Invertebrate Ireland Online                                     
+5 Tricoptera (Caddisfly) – InvertebrateIreland Online                                   
+6 Les mammifères de la Côte d’Ivoire                                                    
+7 Rongeurs et insectivores de Côte d’Ivoire, leur habitat et leur statut de conservation
+8 Красная книга Азербайджанской Республики                                              
+9 Красная книга Узбекистана  
+```
+
+### Check if URLs are working
+
+```{r}
+#| label: check-urls
+#| echo: true
+#| eval: true
+#| message: false
+#| warning: false
+
+# URL incorrect
+raw_metadata %>% 
+  filter(!grepl('http', url_clean)) %>% 
+  distinct(url_clean)
+
+# URL error
+# raw_metadata %>% filter(grepl('http', url_clean)) %>% 
+#   distinct(url_clean) %>% 
+#   mutate(check_URL = ifelse(map(URLencode(url_clean), http_error), 'not found', 'OK')) %>% 
+#   filter(check_URL == 'not found') 
+```
+
+#### DOUBTS
+
+  - There's one URL that resolves but has 'http' missing and one URL that is incorrect. Should this be `NA`?
+  
+```
+ima.sc.gov.br/index.php/biodiversidade/biodiversidade/fauna
+Nicolau, J. i Dalmau, J., 2008. Llista Vermella\r\ndels Vertebrats d’Andorra. BIOCOM (Biologia i\r\nComunicació) SL i Departament de Patrimoni\r\nNatural del Govern d’Andorra. Informe inèdit
+```
+  
+## Run code and keep relevant fields
+
+```{r}
+#| label: run-code-and-keep-relevant-fields
+#| echo: true
+#| eval: true
+#| message: false
+#| warning: false
+
+metadata <- 
+  # check taxon
+  left_join(raw_metadata %>% mutate(group = str_trim(group)) %>%
+              select(-c(kingdom,phylum,subphylum,class,order)),
+            bind_rows(merged_list %>% filter(!is.na(scientificName)),
+                      merged_list %>% filter(is.na(scientificName)) %>%
+                        select(group) %>%
+                        left_join(. , raw_metadata_taxon_list))) %>% 
+  mutate(group = str_trim(group)) %>% 
+  mutate(group = str_to_title(group)) %>% 
+  mutate(group = str_replace_all(group, 'And ', 'and ')) %>% 
+  mutate(group = str_replace_all(group, 'Of', 'of')) %>% 
+  mutate(group = str_replace_all(group, 'The', 'the')) %>%
+  # more taxonomic corrections
+  #
+  #
+  #
+  #
+  # check columns
+  janitor::clean_names() %>% 
+  janitor::remove_empty(c('rows', 'cols')) %>% 
+  # check source
+  mutate(name_orig = str_squish(name_orig)) %>% 
+  mutate(name_orig = str_remove_all(name_orig, "\\\\")) %>% 
+  mutate(name_orig = str_remove_all(name_orig, "\"")) %>% 
+  mutate(name_orig = ifelse(grepl('htt', name_orig) & 
+                               state_province == 'Grand Est',
+                             str_glue('Red list of {group} of Grand Est'), name_orig)) %>% 
+  # missing name of source
+  
+  # check format
+  mutate(format = ifelse(format == 'NA', NA, str_squish(format))) %>% 
+  mutate(format = ifelse(format == '?', NA, format)) %>% 
+  # check language
+  mutate(language = ifelse(language == 'NA', NA, str_squish(language))) %>% 
+  mutate(language = str_replace(language, "/|\\|", ' | ')) %>% 
+  # check location
+  mutate(continent = str_squish(str_replace_all(str_squish(continent), '\\|', ' | '))) %>%
+  mutate(continent = str_replace_all(continent, '_', ' ')) %>%
+  mutate(continent = str_to_title(continent)) %>% 
+  mutate(country = ifelse(country == 'NA', NA, str_squish(country))) %>% 
+  mutate(country = str_replace_all(country, '_', ' ')) %>%
+  mutate(country = ifelse(country == 'USSR', country, str_to_title(country))) %>%
+  mutate(country = str_replace_all(country, 'And ', 'and ')) %>% 
+  mutate(country = str_replace_all(country, 'Of', 'of')) %>% 
+  mutate(country = str_replace_all(country, 'The', 'the')) %>%
+  mutate(state_province = ifelse(state_province == 'NA', NA, str_squish(state_province))) %>%
+  mutate(state_province = str_to_title(state_province)) %>% 
+  mutate(iso_2 = ifelse(iso_2 == 'NA' & country != 'Namibia', NA, str_squish(iso_2))) %>% 
+  mutate(iso_3 = ifelse(iso_3 == 'NA', NA, str_squish(iso_3))) %>%  
+  mutate(iso_2 = str_squish(str_replace_all(str_squish(iso_2), '\\|', ' | '))) %>%
+  mutate(iso_3 = str_squish(str_replace_all(str_squish(iso_3), '\\|', ' | '))) %>%
+  mutate(gadm_level_1 = ifelse(gadm_level_1 == 'NA', NA, str_squish(gadm_level_1))) %>%
+  mutate(gadm_level_1 = str_to_title(gadm_level_1)) %>% 
+  mutate(gadm_level_1 = str_replace_all(gadm_level_1, 'And ', 'and ')) %>% 
+  mutate(gadm_level_1 = str_replace_all(gadm_level_1, 'Of', 'of')) %>% 
+  mutate(gadm_level_1 = str_replace_all(gadm_level_1, 'The', 'the')) %>% 
+  mutate(gadm_level_2 = ifelse(gadm_level_2 == 'NA', NA, str_squish(gadm_level_2))) %>%
+  mutate(gadm_level_2 = str_to_title(gadm_level_2)) %>% 
+  mutate(region_custom = ifelse(region_custom == 'NA', NA, str_squish(region_custom))) %>% 
+  mutate(region_detail = ifelse(region_detail == 'NA', NA, str_squish(region_detail))) %>% 
+  mutate(region_detail = str_squish(str_replace_all(str_squish(region_detail), '\\|', ' | '))) %>%
+  # check event
+  mutate(year = ifelse(year == 'NA', NA, year)) %>% 
+  mutate(year = ifelse(year == '2024?', 2024, year)) %>% 
+  mutate(year = as.numeric(year, na.rm=T)) %>% 
+  mutate(year = case_when(is.na(year) & 
+                            name_orig == 'Crveni popis hrvatskih koralja' 
+                          ~ 2024,
+                          is.na(year) & 
+                            name_orig == 'A Red List of Benin’s sharks' 
+                          ~ 2024,
+                          is.na(year) & 
+                            name_orig == 'Crveni popis lišajeva Hrvatske' 
+                          ~ 2024,
+                          is.na(year) & 
+                            name_orig == 'Červené seznamy' 
+                          ~ 2024,
+                          is.na(year) & 
+                            name_orig == 'Coleoptera (Beetle) – Invertebrate Ireland Online' 
+                          ~ 2024,
+                          is.na(year) & 
+                            name_orig == 'Tricoptera (Caddisfly) – InvertebrateIreland Online' 
+                          ~ 2024,
+                          is.na(year) & 
+                            name_orig == 'Les mammifères de la Côte d’Ivoire' 
+                          ~ 2024,
+                          is.na(year) & 
+                            name_orig == 'Rongeurs et insectivores de Côte d’Ivoire, leur habitat et leur statut de conservation' 
+                          ~ 2024,
+                          is.na(year) & 
+                            name_orig == 'Красная книга Азербайджанской Республики' 
+                          ~ 2024,
+                          is.na(year) & 
+                            name_orig == 'Красная книга Узбекистана' 
+                          ~ 2024,
+                          .default = year)) %>% 
+  # select columns
+  select(id, continent, 
+         gadm_level_0 = country, gadm_level_1, gadm_level_2,
+         region_custom, region_detail, iso_2, iso_3,
+         taxa=group, kingdom, phylum, class, order, family, 
+         url = url_clean, source_name= name_orig,
+         language, year) 
+
+metadata %>% slice_sample(n=50) %>% arrange(id) %>% 
+  kableExtra::kbl(booktabs = T)  %>% 
+  kableExtra::kable_styling(latex_options = c('striped', 'hold_position'))
+```
+
+
+## Data audit
+
+### Summary
+
+```{r}
+#| label: summary
+#| echo: true
+#| eval: true
+#| message: false
+#| warning: false
+#| code-fold: true
+
+metadata %>% 
+  summarise(`Number of records` = n(),
+            `Number of sources` = n_distinct(source_name),
+            `Number of taxa` = n_distinct(taxa),
+            `Animalia records` = sum(kingdom == 'Animalia'),
+            `Plantae records` = sum(kingdom == 'Plantae'),
+            `Fungi records` = sum(kingdom == 'Fungi'),
+            Countries = n_distinct(gadm_level_0),
+            `Sub-national territories` = n_distinct(gadm_level_1)) %>% 
+  t() %>% `colnames<-`(c("N")) %>% 
+  kableExtra::kbl(booktabs = T)  %>% 
+  kableExtra::kable_styling(latex_options = c('striped', 'hold_position'))
+```
+
+
+### Geographic coverage
+
+```{r}
+#| label: geo-coverage
+#| echo: true
+#| eval: true
+#| message: false
+#| warning: false
+#| code-fold: true
+
+world <- geodata::world(resolution = 3, level = 0, path = 'data/')
+
+
+world_records <- left_join(st_as_sf(world), metadata %>%
+  separate_rows(iso_3, sep = '\\|') %>% 
+  select(iso_2, GID_0=iso_3, source_name)) %>% 
+  group_by(GID_0, NAME_0) %>% 
+  summarise(n_records = ifelse(n_distinct(source_name, na.rm = TRUE)==0, 
+                               0, n_distinct(source_name, na.rm = TRUE)),
+            iso_2_string = ifelse(n_records>0,
+                                  paste(iso_2, collapse = ';'), NA))
+
+plot_figure_1 <- tm_shape(world_records %>% 
+           select(-iso_2_string) %>% 
+           mutate(n_records=ifelse(n_records==0,
+                                   NA, n_records))) +
+  tm_polygons(fill = 'n_records',fill_alpha = 0.9,
+              col='grey40', col_alpha = 0.2,
+              fill.scale = tm_scale_intervals(n = 6, 
+                                              #style = 'jenks', 
+                                              breaks = c(1,5,10,20,100,979),
+                                              values = 'brewer.reds',
+                                              value.na = 'grey80',
+                                              label.na = '0'),
+              fill.legend = tm_legend(item.space = 0, item.na.space = 0,
+                                      title = 'Number of sources', 
+                                      reverse=T, 
+                                      # frame=F, 
+                                      frame.lwd = 0.1,
+                                      bg.color = 'white')) +
+  tm_layout(legend.outside = T, 
+            legend.position = c('left','bottom'),  frame=F) +
+  tm_crs(property='global')
+
+tmap_mode('plot')
+plot_figure_1
+tmap_mode('view')
+plot_figure_1
+```
+
+### Taxonomic coverage
+
+```{r}
+#| label: taxonomic-coverage
+#| echo: true
+#| eval: true
+#| message: false
+#| warning: false
+#| code-fold: true
+
+metadata %>% 
+    filter(!is.na(class)) %>% 
+    filter(kingdom %in% c('Animalia')) %>% 
+    group_by(kingdom, class) %>% 
+    summarise(n_sources_taxa = n()) %>% 
+    arrange(desc(n_sources_taxa)) %>% 
+    slice_head(n=5) %>% 
+  rename(`Number of sources` = n_sources_taxa) %>% 
+  kableExtra::kbl(booktabs = T)  %>% 
+  kableExtra::kable_styling(latex_options = c('striped', 'hold_position'))
+
+metadata %>% 
+    filter(!is.na(order)) %>% 
+    filter(kingdom %in% c('Plantae')) %>% 
+    group_by(kingdom, order) %>% 
+    summarise(n_sources_taxa = n()) %>% 
+    arrange(desc(n_sources_taxa)) %>% 
+    slice_head(n=5) %>% 
+  rename(`Number of sources` = n_sources_taxa) %>% 
+  kableExtra::kbl(booktabs = T)  %>% 
+  kableExtra::kable_styling(latex_options = c('striped', 'hold_position'))
+
+# fish sources
+metadata %>% 
+  filter(grepl('fish', taxa, ignore.case=T)) %>% 
+  filter(!grepl('crayfish', taxa, ignore.case=T)) %>% 
+  distinct(source_name) %>% count() %>% 
+  rename(`Number of fish sources` = n) %>% 
+  kableExtra::kbl(booktabs = T)  %>% 
+  kableExtra::kable_styling(latex_options = c('striped', 'hold_position'))
+
+metadata %>% 
+  filter(!is.na(phylum)) %>% 
+  filter(kingdom %in% c('Animalia')) %>% 
+  group_by(kingdom, phylum) %>% 
+  summarise(n_sources_taxa = n()) %>% 
+  ggplot(aes(x = reorder(phylum, -n_sources_taxa), y = n_sources_taxa)) +
+  geom_bar(stat = "identity", fill = "#4CAF50") +
+  facet_wrap(~kingdom, scales = 'free') +
+  labs(x = "", y = "Number of sources") +
+  ggpubr::theme_pubclean() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) 
+
+metadata %>% 
+  filter(!is.na(phylum)) %>% 
+  filter(kingdom %in% c('Plantae', 'Fungi')) %>% 
+  group_by(kingdom, phylum) %>% 
+  summarise(n_sources_taxa = n()) %>% 
+  ggplot(aes(x = reorder(phylum, -n_sources_taxa), y = n_sources_taxa)) +
+  geom_bar(stat = "identity", fill = "#4CAF50") +
+  facet_wrap(~kingdom, scales = 'free') +
+  labs(x = "", y = "Number of sources") +
+  ggpubr::theme_pubclean() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) 
+
+metadata %>% 
+  filter(!is.na(order)) %>% 
+  filter(kingdom %in% c('Animalia')) %>% 
+  group_by(kingdom, order) %>% 
+  summarise(n_sources_taxa = n()) %>% 
+  ggplot(aes(x = reorder(order, -n_sources_taxa), y = n_sources_taxa)) +
+  geom_bar(stat = "identity", fill = "#4CAF50") +
+  facet_wrap(~kingdom, scales = 'free') +
+  labs(x = "", y = "Number of sources") +
+  ggpubr::theme_pubclean() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) 
+
+metadata %>% 
+  filter(!is.na(order)) %>% 
+  filter(kingdom %in% c('Plantae', 'Fungi')) %>% 
+  group_by(kingdom, order) %>% 
+  summarise(n_sources_taxa = n()) %>% 
+  ggplot(aes(x = reorder(order, -n_sources_taxa), y = n_sources_taxa)) +
+  geom_bar(stat = "identity", fill = "#4CAF50") +
+  facet_wrap(~kingdom, scales = 'free') +
+  labs(x = "", y = "Number of sources") +
+  ggpubr::theme_pubclean() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) 
+```
+
+### Temporal coverage
+
+```{r}
+#| label: temporal-coverage
+#| echo: true
+#| eval: true
+#| message: false
+#| warning: false
+#| code-fold: true
+
+metadata %>% 
+  group_by(year) %>% 
+  summarise(publications_year = n_distinct(source_name)) %>% 
+  ggplot(aes(x = year, y = publications_year)) +
+  geom_bar(stat = "identity", fill = "#4CAF50") +
+  ylim(c(0,150)) + xlim(c(1975,2025)) +
+  scale_x_continuous(n.breaks = 15) +
+  labs(x = "", y = "Number of sources") +
+  ggpubr::theme_pubclean()
+```
