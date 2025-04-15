@@ -46,7 +46,7 @@ options(knitr.kable.NA = '')
 #| message: false
 #| warning: false
 
-raw_metadata <- read_xlsx('data/draft/metada_work_version.xlsx', guess_max = 4000) 
+raw_metadata <- read_xlsx('metada_work_version.xlsx', guess_max = 4000) 
 ```
 
 ### Check columns
@@ -132,35 +132,56 @@ raw_metadata %>%
 # English: Red list of Mammals of Grand Est    
 
 raw_metadata %>% 
-  mutate(name_orig = ifelse(grepl('htt', name_orig) & 
-                               state_province == 'Grand Est',
-                             str_glue('Red list of {group} of Grand Est'), name_orig)) %>% 
   mutate(name_orig = case_when(grepl('htt', name_orig) & 
                                state_province == 'Grand Est' & group == 'Birds' ~ 
                                  'Liste rouge des Oiseaux du Grand Est',
                                grepl('htt', name_orig) & 
                                state_province == 'Grand Est' & group == 'Mammals' ~ 
-                                 'Liste rouge des XXX du Grand Est',
+                                 'Liste rouge des Mammifères du Grand Est',
                                grepl('htt', name_orig) & 
                                state_province == 'Grand Est' & group == 'Orthoptera' ~ 
-                                 '',
+                                 'Liste rouge des Orthoptères du Grand Est',
                                grepl('htt', name_orig) & 
                                state_province == 'Grand Est' & group == 'Fishes' ~ 
-                                 '',
+                                 'Liste rouge des Papillons de jour (Rhopalocères et Zygènes) du Grand Est',
                                grepl('htt', name_orig) & 
                                state_province == 'Grand Est' & group == 'Butterflies' ~ 
-                                 '',
+                                 'Liste rouge des Papillons de nuit du Grand Est',
                                grepl('htt', name_orig) & 
                                state_province == 'Grand Est' & group == 'Night butterflies' ~ 
-                                 '',
+                                 'Liste rouge des Hétérocères du Grand Est',
                                grepl('htt', name_orig) & 
                                state_province == 'Grand Est' & group == 'Ladybugs' ~ 
-                                 '',
-                               grepl('htt', name_orig) & 
+                                 'Liste rouge des Coccinelles du Grand Est',
+                                grepl('htt', name_orig) & 
                                state_province == 'Grand Est' & group == 'Branchiopoda' ~ 
-                                 '',
-                               .default = name_orig))
-  filter(state_province == 'Grand Est') %>% select(group, name_orig)
+                                 'Liste rouge des Branchiopodes du Grand Est',
+                                grepl('htt', name_orig) & 
+                               state_province == 'Grand Est' & group == 'Heteroptera' ~ 
+                                 'Liste rouge des Punaises du Grand Est',
+                                grepl('htt', name_orig) & 
+                               state_province == 'Grand Est' & group == 'Mayflies' ~ 
+                                 'Liste rouge des Ephémères – Trichoptères – Plécoptères du Grand Est',
+                                grepl('htt', name_orig) & 
+                               state_province == 'Grand Est' & group == 'Caddisflies' ~ 
+                                 'Liste rouge des Ephémères – Trichoptères – Plécoptères du Grand Est',
+                                grepl('htt', name_orig) & 
+                               state_province == 'Grand Est' & group == 'Stoneflies' ~ 
+                                 'Liste rouge des Ephémères – Trichoptères – Plécoptères du Grand Est',
+                               .default = name_orig))%>%
+  filter(state_province == 'Grand Est') %>% select(group, name_orig)%>%view()
+  
+raw_metadata%>%
+  mutate(name_orig = ifelse(grepl('https://www.ogbw', link_ref) & 
+                         state_province == 'Baden-Württemberg',
+                       str_glue('Rote Liste und kommentiertes Verzeichnis der Brutvogelarten Baden-Württembergs'), name_orig)) %>%
+  mutate(name_orig = ifelse(grepl('https://www.researchgate.net/publication/260814822_Rote_Liste_Wandernder_Vogelarten', link_ref),
+                       str_glue('Rote Liste wandernder Vogelarten Deutschlands'), name_orig)) %>%
+  mutate(year = ifelse(grepl('https://www.researchgate.net/publication/260814822_Rote_Liste_Wandernder_Vogelarten', link_ref),
+                       str_glue('2012'), name_orig))%>%
+  mutate(year = ifelse(grepl('https://www.ogbw', link_ref) & 
+                         state_province == 'Baden-Württemberg',
+                       str_glue('2013'), year)) %>%view()
 
 raw_metadata %>% 
   mutate(language = ifelse(language == 'NA', NA, str_squish(language))) %>% 
