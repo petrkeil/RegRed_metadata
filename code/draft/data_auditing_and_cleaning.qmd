@@ -618,9 +618,9 @@ metadata <-
   mutate(group = str_replace_all(group, 'Of', 'of')) %>% 
   mutate(group = str_replace_all(group, 'The', 'the')) %>%
   # more taxonomic corrections
+  mutate(group = str_squish(group)) %>% 
   mutate(kingdom = case_when(grepl('flora', group, ignore.case=T) ~ 'Plantae',
                              grepl('fauna', group, ignore.case=T) ~ 'Animalia',
-                             grepl('tunicata', group, ignore.case=T) ~ NA,
                              .default = kingdom)) %>% 
   mutate(phylum = ifelse(phylum == 'chordata', 'Chordata', phylum)) %>% 
   mutate(kingdom = ifelse(group == 'Flora', 'Plantae', kingdom)) %>% 
