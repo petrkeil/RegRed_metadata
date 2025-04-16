@@ -1,2 +1,14 @@
-# RegRed_metadata
-Metadata of existing regional red lists from all across the World and for multiple taxonomic groups
+# RegRed metadata
+
+## Towards a new global database of regional red lists (RegRed): metadata
+
+*Ivo Kadlec, Adam Uličný, Petr Keil <a dir="ltr" href="http://orcid.org/0000-0003-3017-1858" target="_blank"><img class="is-rounded" src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" width="15"></a> & Florencia Grattarola <a dir="ltr" href="http://orcid.org/0000-0001-8282-5732" target="_blank"><img class="is-rounded" src="https://upload.wikimedia.org/wikipedia/commons/0/06/ORCID_iD.svg" width="15"></a>*
+
+This repository includes the data and code for our manuscript on the effort to collate regional red lists. We provide the metadata enriched with geographical and taxonomic information, and details about the source’s title, URL, file format, language, and publication date.
+
+### Files
+
+  - `data/metadata.csv`: a csv file with the compiled metadata.  
+  - `data/metadata_column_definitions.csv`: a csv file with the metadata column names and definitions.  
+  - `code/data_summary.qmd`: a quarto file with the code used to produce data summaries and figures.  
+  - `code/data_summary.html`: an html compliled file with the code used to produce data summaries and figures.  
