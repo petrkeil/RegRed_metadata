@@ -1,0 +1,19 @@
+﻿Column Name,Definition
+id,Unique identifier for each record.
+continent,The name of the continent in which the record occurs.
+level_0,The name of the country according to GADM in which the record occurs.
+level_1,"The name of the first smaller administrative region than country (e.g., states, provinces) according to GADM in which the record occurs."
+level_2,"The name of the first smaller administrative region than country (e.g., districts, counties) according to GADM in which the record occurs."
+region_custom,"The name of the non-standard geographic areas not fitting into GADM levels (e.g., Carpathians, Indochina, Dutch Caribbean) in which the record occurs."
+region_detail,The list of countries or regions spanning the custom regions in which the record occurs.
+iso_2,"The two-letter country code according to ISO standards. For non-standard geographic areas (i.e., custom regions) this is a list of the two-letter country codes it overlaps."
+taxa,"The verbatim taxonomic classification of the source. The value of taxa is not always a scientific name; it may include ecological groups (e.g., ""cave animals""), functional groups, or broader categories (e.g., ""animals"")."
+kingdom,The full scientific name of the kingdom in which the taxa is classified.
+phylum,The full scientific name of the phylum in which the taxa is classified.
+class,The full scientific name of the class in which the taxa is classified.
+order,The full scientific name of the order in which the taxa is classified.
+family,The full scientific name of the family in which the taxa is classified.
+source_name,The original name of the source.
+source_link,The URL to access the record.
+language,The language in which the source is written.
+year,The year of publication of the source.
