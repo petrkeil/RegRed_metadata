@@ -6,7 +6,6 @@
 
 This repository includes the data and code for our manuscript on the effort to collate regional red lists. We provide the metadata enriched with geographical and taxonomic information, and details about the source’s title, URL, file format, language, and publication date.
 
-
 ![](/figs/Figure_1.png)
 
 ### Data
@@ -19,12 +18,9 @@ This repository includes the data and code for our manuscript on the effort to c
   - `code/data_summary.html`: an html compiled file with the code used to produce data summaries and figures.
 
 ## Figures
-
-  - `figs/Figure_1`: a png figure with the global distribution of regional red list sources by country.   
-  - `figs/Figure_2`: a png figure with the number of regional red list sources published per year.   
-  - `figs/Figure_3`: a png figure with the number of records by continent and taxonomic kingdom (*Animalia*, *Fungi*, and *Plantae*).  
-  
-  
+  - `figs/Figure_1.png`: a png figure with the global distribution of regional red list sources by country.   
+  - `figs/Figure_2.png`: a png figure with the number of regional red list sources published per year.   
+  - `figs/Figure_3.png`: a png figure with the number of records by continent and taxonomic kingdom (*Animalia*, *Fungi*, and *Plantae*).  
   
 ## LICENCE
 
