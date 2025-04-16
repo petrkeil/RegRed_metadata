@@ -208,7 +208,7 @@ id,continent,gadm_level_0,gadm_level_1,gadm_level_2,region_custom,region_detail,
 207,Europe,Slovenia,,,,,SI,SVN,Reptiles,Animalia,Chordata,Reptilia,,,Rdeči seznam plazilcev (Reptilia),https://www.uradni-list.si/files/RS_-2002-082-04055-OB~P005-0000.PDF,Slovenian,2002
 208,Europe,Slovenia,,,,,SI,SVN,Amphibians,Animalia,Chordata,Amphibia,,,Rdeči seznam dvoživk (Amphibia),https://www.uradni-list.si/files/RS_-2002-082-04055-OB~P006-0000.PDF,Slovenian,2002
 209,Europe,Slovenia,,,,,SI,SVN,Fishes,Animalia,Chordata,,,,Rdeči seznam pinog in rib (Cyclostomata & Pisces),https://www.uradni-list.si/files/RS_-2002-082-04055-OB~P007-0000.PDF,Slovenian,2002
-210,Europe,Slovenia,,,,,SI,SVN,Tunicata,,Chordata,,,,Rdeči seznam plaščarjev (Tunicata),https://www.uradni-list.si/files/RS_-2002-082-04055-OB~P008-0000.PDF,Slovenian,2002
+210,Europe,Slovenia,,,,,SI,SVN,Tunicata,Animalia,Chordata,,,,Rdeči seznam plaščarjev (Tunicata),https://www.uradni-list.si/files/RS_-2002-082-04055-OB~P008-0000.PDF,Slovenian,2002
 211,Europe,Slovenia,,,,,SI,SVN,Lancelets,Animalia,Chordata,,,,Rdeči seznam Akranije,https://www.uradni-list.si/files/RS_-2002-082-04055-OB~P009-0000.PDF,Slovenian,2002
 212,Europe,Slovenia,,,,,SI,SVN,Acorn Worms,Animalia,Hemichordata,Enteropneusta,,,Rdeči seznam črnoškrgarjev (Enteropneusta),https://www.uradni-list.si/files/RS_-2002-082-04055-OB~P010-0000.PDF,Slovenian,2002
 213,Europe,Slovenia,,,,,SI,SVN,Echinoderms,Animalia,Echinodermata,,,,Rdeči seznam iglokožcev,https://www.uradni-list.si/files/RS_-2002-082-04055-OB~P011-0000.PDF,Slovenian,2002
