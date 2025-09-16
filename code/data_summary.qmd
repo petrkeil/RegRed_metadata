@@ -40,7 +40,7 @@ options(knitr.kable.NA = '')
 #| message: false
 #| warning: false
 
-metadata <- read_csv('data/metadata.csv', guess_max = 4000) 
+metadata <- read_csv('data/metadata.csv', guess_max = 4000, na = '') 
 ```
 
 
@@ -56,13 +56,22 @@ metadata <- read_csv('data/metadata.csv', guess_max = 4000)
 
 metadata %>% 
   summarise(`Number of records` = n(),
-            `Number of sources` = n_distinct(source_name),
+            `Number of sources` = n_distinct(sourceTitle),
             `Number of taxa` = n_distinct(taxa),
             `Animalia records` = sum(kingdom == 'Animalia'),
             `Plantae records` = sum(kingdom == 'Plantae'),
             `Fungi records` = sum(kingdom == 'Fungi'),
-            Countries = n_distinct(gadm_level_0),
-            `Sub-national territories` = n_distinct(gadm_level_1)) %>% 
+            `Sub-national territories` = n_distinct(stateProvince),
+            `Custom regions` = n_distinct(customRegion)) %>% 
+  t() %>% `colnames<-`(c("N")) %>% 
+  kableExtra::kbl(booktabs = T)  %>% 
+  kableExtra::kable_styling(latex_options = c('striped', 'hold_position'))
+
+
+metadata %>% select(countryCode) %>%
+  separate_rows(countryCode, sep = '\\|') %>%
+  mutate(countryCode = str_squish(countryCode)) %>% 
+  summarise(Countries = n_distinct(countryCode)) %>% 
   t() %>% `colnames<-`(c("N")) %>% 
   kableExtra::kbl(booktabs = T)  %>% 
   kableExtra::kable_styling(latex_options = c('striped', 'hold_position'))
@@ -90,8 +99,8 @@ metadata %>%
   separate_rows(continent, sep = '\\|') %>%
   mutate(continent = str_squish(continent)) %>%
   group_by(continent) %>% 
-  summarise(n_sources = ifelse(n_distinct(source_name, na.rm = TRUE)==0, 
-                               0, n_distinct(source_name, na.rm = TRUE))) %>% 
+  summarise(n_sources = ifelse(n_distinct(sourceTitle, na.rm = TRUE)==0, 
+                               0, n_distinct(sourceTitle, na.rm = TRUE))) %>% 
   arrange(desc(n_sources)) %>% 
   rename(`Number of sources`=n_sources) %>% 
   adorn_totals('row') %>% 
@@ -139,7 +148,7 @@ metadata %>%
 # germany
 metadata %>%
   filter(!is.na(class)) %>% 
-  filter(gadm_level_0 == 'Germany') %>% 
+  filter(country == 'Germany') %>% 
   group_by(kingdom, class) %>% 
   summarise(n_records = n()) %>% 
   arrange(desc(n_records)) %>% 
@@ -151,7 +160,7 @@ metadata %>%
 
 # usa
 metadata %>%
-  filter(iso_2 == 'US') %>% 
+  filter(countryCode == 'US') %>% 
   group_by(kingdom, taxa) %>% 
   summarise(n_records = n()) %>% 
   arrange(desc(n_records)) %>% 
@@ -176,17 +185,19 @@ metadata %>%
 world <- geodata::world(resolution = 3, level = 0, path = 'data/')
 
 world_records <- left_join(st_as_sf(world), metadata %>%
-  separate_rows(iso_3, sep = '\\|') %>% 
-  select(iso_2, GID_0=iso_3, source_name)) %>% 
+  separate_rows(countryCode, sep = '\\|') %>% 
+  mutate(countryCode = str_squish(countryCode)) %>% 
+  mutate(iso_3 = countrycode::countrycode(countryCode, 'iso2c', 'iso3c')) %>% 
+  select(countryCode, GID_0=iso_3, sourceTitle)) %>% 
   group_by(GID_0, NAME_0) %>% 
-  summarise(n_sources = ifelse(n_distinct(source_name, na.rm = TRUE)==0, 
-                               0, n_distinct(source_name, na.rm = TRUE)),
-            iso_2_string = ifelse(n_sources>0,
-                                  paste(iso_2, collapse = ';'), NA)) %>% 
+  summarise(n_sources = ifelse(n_distinct(sourceTitle, na.rm = TRUE)==0, 
+                               0, n_distinct(sourceTitle, na.rm = TRUE)),
+            countryCode_string = ifelse(n_sources>0,
+                                  paste(countryCode, collapse = ';'), NA)) %>% 
   ungroup() %>% st_cast() %>% st_set_crs(4326)
 
 plot_figure_1 <- tm_shape(world_records %>% 
-           select(-iso_2_string) %>% 
+           select(-countryCode_string) %>% 
            mutate(n_sources=ifelse(n_sources==0,
                                    NA, n_sources))) +
   tm_polygons(fill = 'n_sources',fill_alpha = 0.9,
@@ -238,7 +249,7 @@ plot_figure_1
 # sources by kingdom
 metadata %>%
   group_by(kingdom) %>% 
-  summarise(n_sources = n_distinct(source_name)) %>% 
+  summarise(n_sources = n_distinct(sourceTitle)) %>% 
   arrange(desc(n_sources)) %>% 
   rename(`Number of sources` = n_sources) %>% 
   adorn_totals('row') %>% 
@@ -308,7 +319,7 @@ metadata %>%
 # sources of flora and fauna
 metadata %>%
   filter(taxa == 'Fauna' | taxa == 'Flora') %>%
-  summarise(n_sources = n_distinct(source_name)) %>% 
+  summarise(n_sources = n_distinct(sourceTitle)) %>% 
   rename(`Number of sources` = n_sources) %>% 
   kableExtra::kbl(booktabs = T)  %>% 
   kableExtra::kable_styling(latex_options = c('striped', 'hold_position'))
@@ -319,7 +330,7 @@ metadata %>%
   filter(!is.na(order)) %>% 
   filter(kingdom %in% c('Plantae')) %>% 
   group_by(kingdom, order) %>% 
-  summarise(n_sources_taxa = n_distinct(source_name)) %>% 
+  summarise(n_sources_taxa = n_distinct(sourceTitle)) %>% 
   arrange(desc(n_sources_taxa)) %>% 
   slice_head(n=5) %>% 
   rename(`Number of sources` = n_sources_taxa) %>% 
@@ -330,7 +341,7 @@ metadata %>%
 metadata %>% 
   filter(grepl('fish', taxa, ignore.case=T)) %>% 
   filter(!grepl('crayfish', taxa, ignore.case=T)) %>% 
-  distinct(source_name) %>% count() %>% 
+  distinct(sourceTitle) %>% count() %>% 
   rename(`Number of fish sources` = n) %>% 
   kableExtra::kbl(booktabs = T)  %>% 
   kableExtra::kable_styling(latex_options = c('striped', 'hold_position'))
@@ -353,7 +364,7 @@ metadata %>%
   filter(!is.na(phylum)) %>% 
   filter(kingdom %in% c('Animalia')) %>% 
   group_by(kingdom, phylum) %>% 
-  summarise(n_sources_taxa = n_distinct(source_name)) %>% 
+  summarise(n_sources_taxa = n_distinct(sourceTitle)) %>% 
   ggplot(aes(x = reorder(phylum, -n_sources_taxa), y = n_sources_taxa)) +
   geom_bar(stat = "identity", fill = "#4CAF50") +
   facet_wrap(~kingdom, scales = 'free') +
@@ -365,7 +376,7 @@ metadata %>%
   filter(!is.na(phylum)) %>% 
   filter(kingdom %in% c('Plantae', 'Fungi')) %>% 
   group_by(kingdom, phylum) %>% 
-  summarise(n_sources_taxa = n_distinct(source_name)) %>% 
+  summarise(n_sources_taxa = n_distinct(sourceTitle)) %>% 
   ggplot(aes(x = reorder(phylum, -n_sources_taxa), y = n_sources_taxa)) +
   geom_bar(stat = "identity", fill = "#4CAF50") +
   facet_wrap(~kingdom, scales = 'free') +
@@ -377,7 +388,7 @@ metadata %>%
   filter(!is.na(order)) %>% 
   filter(kingdom %in% c('Animalia')) %>% 
   group_by(kingdom, order) %>% 
-  summarise(n_sources_taxa = n_distinct(source_name)) %>% 
+  summarise(n_sources_taxa = n_distinct(sourceTitle)) %>% 
   ggplot(aes(x = reorder(order, -n_sources_taxa), y = n_sources_taxa)) +
   geom_bar(stat = "identity", fill = "#4CAF50") +
   facet_wrap(~kingdom, scales = 'free') +
@@ -389,7 +400,7 @@ metadata %>%
   filter(!is.na(order)) %>% 
   filter(kingdom %in% c('Plantae', 'Fungi')) %>% 
   group_by(kingdom, order) %>% 
-  summarise(n_sources_taxa = n_distinct(source_name)) %>% 
+  summarise(n_sources_taxa = n_distinct(sourceTitle)) %>% 
   ggplot(aes(x = reorder(order, -n_sources_taxa), y = n_sources_taxa)) +
   geom_bar(stat = "identity", fill = "#4CAF50") +
   facet_wrap(~kingdom, scales = 'free') +
@@ -429,17 +440,17 @@ metadata %>%
 #| warning: false
 #| code-fold: true
 #| tbl-cap: 
-#|  - 'Year of publication of the sources'
+#|  - 'sourceDate of publication of the sources'
 
 metadata %>%
-  mutate(period = case_when(year>=2014 ~ 'In the last decade', 
-                            year<2014 ~ 'Older', 
-                            .default = 'No year of publication')) %>% 
+  mutate(period = case_when(sourceDate>=2014 ~ 'In the last decade', 
+                            sourceDate<2014 ~ 'Older', 
+                            .default = 'No sourceDate of publication')) %>% 
   group_by(period) %>% 
-  summarise(n_sources = n_distinct(source_name)) %>% 
+  summarise(n_sources = n_distinct(sourceTitle)) %>% 
   arrange(desc(n_sources)) %>% 
   mutate(`%` = scales::label_percent()(n_sources / sum(n_sources))) %>% 
-  rename(`Year of publication` = period,
+  rename(`sourceDate of publication` = period,
          `Number of sources` = n_sources) %>% 
   kableExtra::kbl(booktabs = T)  %>% 
   kableExtra::kable_styling(latex_options = c('striped', 'hold_position'))
@@ -456,12 +467,12 @@ metadata %>%
 #| code-fold: true
 #| fig-dpi: 50
 #| fig-cap: 
-#|  - 'Number of regional red list sources published per year'
+#|  - 'Number of regional red list sources published per sourceDate'
 
 metadata %>% 
-  group_by(year) %>% 
-  summarise(publications_year = n_distinct(source_name)) %>% 
-  ggplot(aes(x = year, y = publications_year)) +
+  group_by(sourceDate) %>% 
+  summarise(publications_sourceDate = n_distinct(sourceTitle)) %>% 
+  ggplot(aes(x = sourceDate, y = publications_sourceDate)) +
   geom_bar(stat = "identity", fill = "#4CAF50") +
   ylim(c(0,150)) + xlim(c(1975,2025)) +
   scale_x_continuous(n.breaks = 15) +
